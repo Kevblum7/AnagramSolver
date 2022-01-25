@@ -1,0 +1,161 @@
+//
+//  main.cpp
+//  anagrams
+//
+//  Created by Kevin Blum on 12/11/21.
+//
+
+#include <iostream>
+#include <vector>
+#include <fstream>
+#include <unordered_map>
+#include <sstream>
+#include <string>
+#include <algorithm>
+using namespace std;
+
+// Class Anagram Grouper contains methods to accept, sort, and write to file anagrams
+class AnagramGrouper {
+    
+// sizeSort sorts each line of input by grouping size of anagram group
+// accepts vector of already grouped but not ordered anagrams and int of num of rows
+    
+private:
+    void sizeSort(vector<vector<string> >& line, int n){
+    
+        if (n == 1){
+            return;
+        }
+        for (int i=0; i<n-1; i++){
+            vector<string> l = line[i];
+            vector<string> l2 = line[i+1];
+            if(l.size() > l2.size()){
+                swap(line[i], line[i+1]);
+            }
+        }
+        sizeSort(line, n-1);
+    }
+
+    
+// writeToFile will take sorted anagrams and write to output file
+// adds brackets and commas to appropriate positions
+
+private:
+    void writeToFile(vector<vector<string> >& done, ofstream &output_file){
+        
+        for(int i = 0; i < done.size(); i++){
+            output_file << "[";
+            for(int j = 0; j < done[i].size(); j++){
+                if(j>0){
+                    output_file << ",";
+                }
+                output_file << done[i][j];
+            }
+            output_file << "]";
+            if(i < done.size()-1){
+                output_file << ",";
+            }
+        }
+        output_file << "\n";
+    }
+
+// anagramLists takes istringstream input and gets each anagram that is separated by commas
+// will produce error because of bad character and display line
+public:
+    void anagramLists(istringstream& ss, ofstream &output_file, int num_line) {
+        
+        vector <string> words;
+        vector <string> letters;
+        
+        string s;
+        int ascii;
+        while(ss)
+        {
+            getline( ss, s, ',' );
+            for(int a = 0; a < s.length(); a++){
+                ascii = int(s[a]);
+                if((ascii < 97 || ascii > 122) && ascii != 32 ) {
+                    cout << "| ERROR: All characters must either be a space, a comma, or a lowercase English letter! Line(" << num_line << ")" << " {'" << s[a] << "'} |" << endl;
+                   // output_file << "All characters must be either a space, comma, or lowercase English letter! Line(" << num_line << ")" << " {'" << s[a] << "'} " << endl;
+                    return;
+                }
+            }
+            
+            // two vectors. One to keep actual input for later output and
+            // second vector 'letters' to produce key without any spaces
+            
+            words.push_back( s );
+            s.erase(std::remove(s.begin(), s.end(), ' '), s.end());
+            letters.push_back(s);
+        }
+        if(s == "" && words.size()== 1){
+            output_file << "[]";
+            output_file << "\n";
+            return;
+        }
+        
+        unordered_map<string,vector<string> > anagram_map;
+
+        int n = words.size();
+        string tmp;
+        
+        // map sorts by key with no spaces but pushes actual anagram for output
+    
+        for(int i =0;i<n-1;++i)
+        {
+            sort(letters[i].begin(), letters[i].end());
+            tmp = words[i];
+            anagram_map[letters[i]].push_back(tmp);
+        
+        }
+        vector<vector<string>> grouped;
+    
+        for(auto it=anagram_map.begin();it!=anagram_map.end();++it){
+            grouped.push_back(it->second);
+        }
+        
+        int groups = grouped.size();
+        sizeSort(grouped, groups);
+        writeToFile(grouped, output_file);
+    }
+};
+
+int main(int argc, const char * argv[]) {
+    
+    // creates an AnagramGrouper object and sorts each line of text files into groups of anagrams
+    // Provide input and output file as command line arguments
+    if(argc == 3){
+        
+        AnagramGrouper anagrams = AnagramGrouper();
+        ofstream myfile;
+        ifstream file;
+        file.open(argv[1]);      // "/Users/kevinblum/anagrams/input-output/input_Bad_Char.txt"
+        myfile.open(argv[2]);    // "/Users/kevinblum/anagrams/input-output/output_Bad_Char.txt"
+        
+        int num_line = 0;     // line error tracker
+        
+       
+        string str;
+        
+        if(file.is_open() && myfile.is_open())
+        {
+            while(file.good() && myfile.good()){
+                getline( file, str );
+                istringstream ss( str );
+                anagrams.anagramLists(ss, myfile, num_line);
+                num_line = num_line + 1;
+                if(file.eof()){
+                    break;
+                }
+            }
+        }
+        else{
+            cout << "| ERROR: File cannot be opened. Please provide an accepted file. |" << endl;
+        }
+        file.close();
+        myfile.close();
+    }
+    else{
+        cout << "| ERROR: Have not provided both valid input and output paths! |" << endl;
+    }
+}
